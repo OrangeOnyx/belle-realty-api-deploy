@@ -1,0 +1,1367 @@
+// Belle Realty PWA — Complete Prisma Schema
+// On The Blvd Shopping Center, Lafayette, LA
+// Phase 1 + 2 + 3 — All models
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  PROPERTY_MANAGER
+  LEASING_AGENT
+  MAINTENANCE
+  READ_ONLY
+}
+
+enum LeaseType {
+  NNN
+  NN
+  MODIFIED_GROSS
+  FULL_SERVICE
+  PERCENTAGE_ONLY
+}
+
+enum LeaseStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  HOLDOVER
+  TERMINATED
+}
+
+enum MaintenanceStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING_PARTS
+  COMPLETED
+  CANCELLED
+}
+
+enum MaintenanceCategory {
+  HVAC
+  PLUMBING
+  ELECTRICAL
+  ROOF
+  EXTERIOR
+  INTERIOR
+  SIGNAGE
+  PARKING
+  PEST
+  GENERAL
+}
+
+enum MaintenancePriority {
+  EMERGENCY
+  HIGH
+  NORMAL
+  LOW
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  TOURING
+  LOI_SENT
+  LOI_SIGNED
+  LEASE_DRAFT
+  EXECUTED
+  LOST
+}
+
+enum NoticeType {
+  DEFAULT_MONETARY
+  DEFAULT_NON_MONETARY
+  EVICTION_5DAY
+  RENEWAL_OFFER
+  HOLDOVER_WARNING
+  GENERAL
+}
+
+enum ComplianceStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  EXPIRED
+  WAIVED
+}
+
+enum TenantClassification {
+  ANCHOR
+  JUNIOR_ANCHOR
+  INLINE
+  PAD
+  KIOSK
+  SEASONAL
+}
+
+enum SignageStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  INSTALLED
+}
+
+enum VendorRegistrationStatus {
+  INVITED
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIAL
+  PAID
+  OVERDUE
+  VOID
+}
+
+enum ESignStatus {
+  PENDING
+  SENT
+  VIEWED
+  SIGNED
+  DECLINED
+  EXPIRED
+}
+
+enum ParkingPartyType {
+  BANK
+  CHURCH
+  BUSINESS
+  GOVERNMENT
+  OTHER
+}
+
+// ─── User & Auth ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(READ_ONLY)
+  isActive     Boolean   @default(true)
+  mfaEnabled   Boolean   @default(false)
+  mfaSecret    String?
+  mfaBackupCodes String[]
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  activityLogs  ActivityLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  jti       String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  family    String   // for family invalidation on reuse
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Property ────────────────────────────────────────────────────────────────
+
+model Property {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  city        String   @default("Lafayette")
+  state       String   @default("LA")
+  zip         String
+  parish      String   @default("Lafayette")
+  totalGla    Decimal  @db.Decimal(10, 2)
+  yearBuilt   Int?
+  description String?
+  website     String?
+  phone       String?
+  email       String?
+  logoPath    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Business rule defaults
+  lateFeeFlat          Decimal @db.Decimal(10, 2) @default(100.00)
+  lateFeeDailyRate     Decimal @db.Decimal(10, 2) @default(25.00)
+  lateFeeGraceDays     Int     @default(5)
+  holdoverMultiplier   Decimal @db.Decimal(4, 2)  @default(2.00)
+  camAnnualCapPct      Decimal @db.Decimal(4, 4)  @default(0.05)
+  monetaryCureDays     Int     @default(7)
+  nonMonetaryCureDays  Int     @default(15)
+  renewalNoticeDays    Int     @default(60)
+  renewalDefaultBasePsf    Decimal @db.Decimal(10, 4) @default(14.00)
+  renewalDefaultTotalPsf   Decimal @db.Decimal(10, 4) @default(19.00)
+  renewalDefaultAdditionalPsf Decimal @db.Decimal(10, 4) @default(5.00)
+
+  units               Unit[]
+  tenants             Tenant[]
+  leases              Lease[]
+  leads               Lead[]
+  maintenanceRequests MaintenanceRequest[]
+  complianceTasks     ComplianceTask[]
+  reminders           Reminder[]
+  notices             Notice[]
+  financialSnapshots  FinancialSnapshot[]
+  activityLogs        ActivityLog[]
+  documents           DocumentReference[]
+  parkingAgreements   ParkingAgreement[]
+  sitePlanShapes      SitePlanShape[]
+  floorPlans          FloorPlan[]
+  camReconciliations  CamReconciliation[]
+  invoices            Invoice[]
+  payments            Payment[]
+  expenses            Expense[]
+  chartOfAccounts     ChartOfAccount[]
+  workflowDefinitions WorkflowDefinition[]
+  emailTemplates      EmailTemplate[]
+  emailLogs           EmailLog[]
+  tasks               Task[]
+  eSignRequests       ESignRequest[]
+
+  @@map("properties")
+}
+
+// ─── Unit ────────────────────────────────────────────────────────────────────
+
+model Unit {
+  id           String   @id @default(cuid())
+  propertyId   String
+  suiteNumber  String
+  gla          Decimal  @db.Decimal(10, 2)
+  floor        Int?     @default(1)
+  description  String?
+  isVacant     Boolean  @default(true)
+  isOwnerOccupied Boolean @default(false)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // HVAC split — per unit, overrides property default
+  hvacFirstCallTenantCap  Decimal? @db.Decimal(10, 2)  // default $1,000
+  hvacReplacementTenantPct Decimal? @db.Decimal(4, 4)  // default 0.25
+
+  property Property @relation(fields: [propertyId], references: [id])
+  leases   Lease[]
+  leads    Lead[]
+  maintenanceRequests MaintenanceRequest[]
+  sitePlanShapes SitePlanShape[]
+  floorPlans     FloorPlan[]
+  hvacContracts  HvacMaintenanceContract[]
+  documents      DocumentReference[]
+
+  @@unique([propertyId, suiteNumber])
+  @@index([propertyId])
+  @@map("units")
+}
+
+// ─── Tenant ──────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id             String   @id @default(cuid())
+  propertyId     String
+  legalName      String
+  tradeName      String?
+  classification TenantClassification @default(INLINE)
+  email          String?
+  phone          String?
+  altPhone       String?
+  contactName    String?
+  address        String?
+  city           String?
+  state          String?
+  zip            String?
+  taxId          String?   // EIN or SSN for 1099
+  logoPath       String?
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  property            Property             @relation(fields: [propertyId], references: [id])
+  leases              Lease[]
+  maintenanceRequests MaintenanceRequest[]
+  complianceTasks     ComplianceTask[]
+  reminders           Reminder[]
+  notices             Notice[]
+  documents           DocumentReference[]
+  occupationalLicenses OccupationalLicense[]
+  achForms            AchForm[]
+  signageApprovals    SignageApproval[]
+  tenantUsers         TenantUser[]
+  invoices            Invoice[]
+  payments            Payment[]
+  camReconciliations  CamReconciliation[]
+  eSignRequests       ESignRequest[]
+  percentageRentClauses PercentageRentClause[]
+  tenantSalesReports  TenantSalesReport[]
+  tiAllowances        TIAllowance[]
+
+  @@index([propertyId])
+  @@map("tenants")
+}
+
+// ─── Lease ───────────────────────────────────────────────────────────────────
+
+model Lease {
+  id           String      @id @default(cuid())
+  propertyId   String
+  unitId       String
+  tenantId     String
+  leaseType    LeaseType   @default(NNN)
+  status       LeaseStatus @default(DRAFT)
+  renewalNumber Int        @default(0)
+
+  // Dates
+  leaseStart        DateTime
+  leaseEnd          DateTime
+  rentCommenceDate  DateTime?
+  executedAt        DateTime?
+  terminatedAt      DateTime?
+
+  // Concession model
+  constructionMonths  Int @default(0)
+  abatementMonths     Int @default(0)
+  statedTermMonths    Int
+  effectiveTermMonths Int
+
+  // Rate fields — RSF always from Unit.gla (locked)
+  basePsf        Decimal @db.Decimal(10, 4)
+  camPsf         Decimal @db.Decimal(10, 4) @default(0)
+  taxPsf         Decimal @db.Decimal(10, 4) @default(0)
+  insPsf         Decimal @db.Decimal(10, 4) @default(0)
+  additionalPsf  Decimal @db.Decimal(10, 4) @default(0)
+  totalPsf       Decimal @db.Decimal(10, 4)
+
+  // Computed monthly amounts (stored for rent roll performance)
+  monthlyBase        Decimal @db.Decimal(10, 2)
+  monthlyAdditional  Decimal @db.Decimal(10, 2)
+  monthlyTotal       Decimal @db.Decimal(10, 2)
+
+  // Security deposit
+  securityDepositAmount Decimal @db.Decimal(10, 2) @default(0)
+  securityDepositType   String  @default("CASH") // CASH | LETTER_OF_CREDIT | GUARANTY
+  securityDepositHeld   Decimal @db.Decimal(10, 2) @default(0)
+
+  // Renewal option
+  hasRenewalOption      Boolean @default(false)
+  renewalOptionTermYears Int?
+  renewalNoticeDueDays  Int?
+
+  // Louisiana-specific
+  noticeWaiverOnFile    Boolean @default(false)
+  isRecorded            Boolean @default(false)
+  recordedAt            DateTime?
+  mortgageRecordBook    String?
+  mortgageRecordPage    String?
+  parishOfRecording     String?
+
+  // Holdover
+  holdoverRateMultiplier Decimal @db.Decimal(4, 2) @default(2.00)
+  holdoverFlaggedAt      DateTime?
+
+  // Escalation
+  escalationType        String?  // FIXED | CPI | NONE
+  escalationRate        Decimal? @db.Decimal(6, 4)
+  nextEscalationDate    DateTime?
+
+  // Permitted use
+  permittedUse          String?
+  exclusiveUseClause    String?
+
+  notes    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  property   Property @relation(fields: [propertyId], references: [id])
+  unit       Unit     @relation(fields: [unitId], references: [id])
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  reminders           Reminder[]
+  notices             Notice[]
+  documents           DocumentReference[]
+  maintenanceRequests MaintenanceRequest[]
+  invoices            Invoice[]
+  payments            Payment[]
+  camReconciliations  CamReconciliation[]
+  eSignRequests       ESignRequest[]
+  percentageRentClauses PercentageRentClause[]
+  tenantSalesReports  TenantSalesReport[]
+  tiAllowances        TIAllowance[]
+
+  @@index([propertyId])
+  @@index([unitId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("leases")
+}
+
+// ─── Lead ────────────────────────────────────────────────────────────────────
+
+model Lead {
+  id          String     @id @default(cuid())
+  propertyId  String
+  unitId      String?
+  status      LeadStatus @default(NEW)
+  contactName String
+  company     String?
+  email       String?
+  phone       String?
+  desiredSf   Decimal?   @db.Decimal(10, 2)
+  desiredUse  String?
+  notes       String?
+  source      String?    // WALK_IN | REFERRAL | WEBSITE | BROKER | OTHER
+  assignedTo  String?
+
+  // LOI fields
+  loiSentAt    DateTime?
+  loiSignedAt  DateTime?
+  dealType     String?   // NEW | RENEWAL | EXPANSION | RELOCATION
+  proposedBasePsf    Decimal? @db.Decimal(10, 4)
+  proposedAdditionalPsf Decimal? @db.Decimal(10, 4)
+  proposedTermMonths Int?
+  proposedStartDate  DateTime?
+  tiRequested   Decimal? @db.Decimal(10, 2)
+
+  lostReason  String?
+  lostAt      DateTime?
+  convertedToLeaseId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  property Property @relation(fields: [propertyId], references: [id])
+  unit     Unit?    @relation(fields: [unitId], references: [id])
+
+  @@index([propertyId])
+  @@index([status])
+  @@map("leads")
+}
+
+// ─── Maintenance ─────────────────────────────────────────────────────────────
+
+model MaintenanceRequest {
+  id          String              @id @default(cuid())
+  propertyId  String
+  unitId      String?
+  tenantId    String?
+  leaseId     String?
+  category    MaintenanceCategory @default(GENERAL)
+  priority    MaintenancePriority @default(NORMAL)
+  status      MaintenanceStatus   @default(OPEN)
+  title       String
+  description String
+  reportedBy  String?
+  assignedTo  String?
+  vendorId    String?
+
+  // HVAC-specific cost split
+  isHvac              Boolean @default(false)
+  hvacTotalCost       Decimal? @db.Decimal(10, 2)
+  hvacTenantShare     Decimal? @db.Decimal(10, 2)
+  hvacLandlordShare   Decimal? @db.Decimal(10, 2)
+  hvacCostSplitRule   String?  // "FIRST_CALL" | "REPLACEMENT"
+  hvacIsReplacement   Boolean @default(false)
+
+  scheduledAt  DateTime?
+  completedAt  DateTime?
+  notes        String?
+  internalNotes String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  property Property  @relation(fields: [propertyId], references: [id])
+  unit     Unit?     @relation(fields: [unitId], references: [id])
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id])
+  lease    Lease?    @relation(fields: [leaseId], references: [id])
+  vendor   Vendor?   @relation(fields: [vendorId], references: [id])
+  documents DocumentReference[]
+
+  @@index([propertyId])
+  @@index([status])
+  @@map("maintenance_requests")
+}
+
+// ─── Compliance ───────────────────────────────────────────────────────────────
+
+model ComplianceActionType {
+  id               String  @id @default(cuid())
+  name             String
+  category         String  // INSURANCE | PERMIT | FINANCIAL | MAINTENANCE | CUSTOM
+  description      String?
+  isRecurring      Boolean @default(false)
+  recurrenceMonths Int?
+  isRequired       Boolean @default(true)
+  isSystem         Boolean @default(false)
+  isActive         Boolean @default(true)
+  createdAt        DateTime @default(now())
+
+  complianceTasks ComplianceTask[]
+
+  @@map("compliance_action_types")
+}
+
+model ComplianceTask {
+  id                    String           @id @default(cuid())
+  propertyId            String
+  tenantId              String?
+  actionTypeId          String?
+  title                 String
+  description           String?
+  status                ComplianceStatus @default(PENDING)
+  dueDate               DateTime
+  completedAt           DateTime?
+  nextDueDate           DateTime?
+  notes                 String?
+  documentPath          String?
+  isRecurring           Boolean @default(false)
+  recurrenceMonths      Int?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  property   Property              @relation(fields: [propertyId], references: [id])
+  tenant     Tenant?               @relation(fields: [tenantId], references: [id])
+  actionType ComplianceActionType? @relation(fields: [actionTypeId], references: [id])
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([dueDate])
+  @@map("compliance_tasks")
+}
+
+model OccupationalLicense {
+  id                       String   @id @default(cuid())
+  tenantId                 String
+  issuingParish            String
+  licenseNumber            String
+  issuedDate               DateTime
+  expirationDate           DateTime
+  renewalDueDate           DateTime
+  zoningComplianceObtained Boolean  @default(false)
+  notes                    String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("occupational_licenses")
+}
+
+// ─── Reminders & Notices ─────────────────────────────────────────────────────
+
+model Reminder {
+  id          String   @id @default(cuid())
+  propertyId  String
+  tenantId    String?
+  leaseId     String?
+  title       String
+  description String?
+  dueDate     DateTime
+  isDone      Boolean  @default(false)
+  completedAt DateTime?
+  assignedTo  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  tenant   Tenant?  @relation(fields: [tenantId], references: [id])
+  lease    Lease?   @relation(fields: [leaseId], references: [id])
+
+  @@index([propertyId])
+  @@index([dueDate])
+  @@map("reminders")
+}
+
+model Notice {
+  id          String     @id @default(cuid())
+  propertyId  String
+  tenantId    String?
+  leaseId     String?
+  type        NoticeType @default(GENERAL)
+  title       String
+  body        String
+  issuedAt    DateTime?
+  deliveredAt DateTime?
+  deliveryMethod String?  // HAND | MAIL | EMAIL | CERTIFIED
+  responseDeadline DateTime?
+  status      String     @default("DRAFT") // DRAFT | ISSUED | RESPONDED | CLOSED
+  documentPath String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  tenant   Tenant?  @relation(fields: [tenantId], references: [id])
+  lease    Lease?   @relation(fields: [leaseId], references: [id])
+
+  @@index([propertyId])
+  @@map("notices")
+}
+
+// ─── Financial ───────────────────────────────────────────────────────────────
+
+model FinancialSnapshot {
+  id                String   @id @default(cuid())
+  propertyId        String
+  snapshotDate      DateTime
+  totalMonthlyRent  Decimal  @db.Decimal(12, 2)
+  totalCollected    Decimal  @db.Decimal(12, 2)
+  totalOutstanding  Decimal  @db.Decimal(12, 2)
+  occupancyRate     Decimal  @db.Decimal(5, 4)
+  occupiedUnits     Int
+  totalUnits        Int
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId, snapshotDate])
+  @@map("financial_snapshots")
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  propertyId  String
+  tenantId    String
+  leaseId     String?
+  invoiceNumber String      @unique
+  status      InvoiceStatus @default(DRAFT)
+  periodStart DateTime
+  periodEnd   DateTime
+  dueDate     DateTime
+  subtotal    Decimal       @db.Decimal(10, 2)
+  taxAmount   Decimal       @db.Decimal(10, 2) @default(0)
+  totalAmount Decimal       @db.Decimal(10, 2)
+  paidAmount  Decimal       @db.Decimal(10, 2) @default(0)
+  balanceDue  Decimal       @db.Decimal(10, 2)
+  notes       String?
+  sentAt      DateTime?
+  paidAt      DateTime?
+  voidedAt    DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  property  Property        @relation(fields: [propertyId], references: [id])
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  lease     Lease?          @relation(fields: [leaseId], references: [id])
+  lineItems InvoiceLineItem[]
+  payments  Payment[]
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  chargeCode  String  // BASE_RENT | CAM | TAX | INSURANCE | LATE_FEE | SALES_TAX | OTHER
+  amount      Decimal @db.Decimal(10, 2)
+  quantity    Decimal @db.Decimal(10, 4) @default(1)
+  unitPrice   Decimal @db.Decimal(10, 4)
+  accountCode String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_line_items")
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  invoiceId       String?
+  leaseId         String
+  tenantId        String
+  propertyId      String
+  amount          Decimal   @db.Decimal(10, 2)
+  method          String    @default("OTHER") // ACH | CHECK | CASH | CREDIT_CARD | WIRE | OTHER
+  referenceNumber String?
+  receivedAt      DateTime  @default(now())
+  depositedAt     DateTime?
+  isNsf           Boolean   @default(false)
+  nsfFee          Decimal?  @db.Decimal(10, 2)
+  notes           String?
+  postedById      String?
+  createdAt       DateTime  @default(now())
+
+  invoice  Invoice?  @relation(fields: [invoiceId], references: [id])
+  lease    Lease     @relation(fields: [leaseId], references: [id])
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  property Property  @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@map("payments")
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  propertyId    String
+  vendorId      String?
+  vendorName    String?
+  accountCode   String?
+  amount        Decimal  @db.Decimal(10, 2)
+  description   String
+  category      String?  // MAINTENANCE | INSURANCE | UTILITIES | MANAGEMENT | PROFESSIONAL | CAPITAL | OTHER
+  expenseDate   DateTime
+  invoiceNumber String?
+  receiptPath   String?
+  isPaid        Boolean  @default(false)
+  paidAt        DateTime?
+  paymentMethod String?
+  notes         String?
+  postedById    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  vendor   Vendor?  @relation(fields: [vendorId], references: [id])
+
+  @@index([propertyId])
+  @@map("expenses")
+}
+
+model ChartOfAccount {
+  id          String  @id @default(cuid())
+  propertyId  String?
+  code        String  @unique
+  name        String
+  type        String  // ASSET | LIABILITY | EQUITY | INCOME | EXPENSE
+  subType     String?
+  parentCode  String?
+  isSystem    Boolean @default(false)
+  isActive    Boolean @default(true)
+  description String?
+
+  property Property? @relation(fields: [propertyId], references: [id])
+
+  @@map("chart_of_accounts")
+}
+
+// ─── CAM ─────────────────────────────────────────────────────────────────────
+
+model CamReconciliation {
+  id                       String   @id @default(cuid())
+  propertyId               String
+  leaseId                  String
+  tenantId                 String
+  reconcileYear            Int
+  estimatedAnnualCam       Decimal  @db.Decimal(10, 2)
+  totalPropertyCamExpenses Decimal  @db.Decimal(10, 2)
+  tenantProRataShare       Decimal  @db.Decimal(5, 4)
+  tenantActualCam          Decimal  @db.Decimal(10, 2)
+  trueUpAmount             Decimal  @db.Decimal(10, 2)
+  status                   String   @default("DRAFT") // DRAFT | SENT | SETTLED
+  notes                    String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  lease    Lease    @relation(fields: [leaseId], references: [id])
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([leaseId, reconcileYear])
+  @@map("cam_reconciliations")
+}
+
+// ─── Percentage Rent ──────────────────────────────────────────────────────────
+
+model PercentageRentClause {
+  id                   String  @id @default(cuid())
+  leaseId              String
+  tenantId             String
+  breakpointType       String  // NATURAL | ARTIFICIAL
+  stipulatedBreakpoint Decimal? @db.Decimal(12, 2)
+  percentageRate       Decimal  @db.Decimal(6, 4)
+  exclusions           String[]
+  reportingPeriod      String   // MONTHLY | ANNUAL
+  createdAt            DateTime @default(now())
+
+  lease  Lease  @relation(fields: [leaseId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("percentage_rent_clauses")
+}
+
+model TenantSalesReport {
+  id          String   @id @default(cuid())
+  leaseId     String
+  tenantId    String
+  periodStart DateTime
+  periodEnd   DateTime
+  grossSales  Decimal  @db.Decimal(12, 2)
+  submittedAt DateTime
+  certifiedAt DateTime?
+  source      String   @default("SELF_REPORTED") // SELF_REPORTED | AUDITED
+  createdAt   DateTime @default(now())
+
+  lease  Lease  @relation(fields: [leaseId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("tenant_sales_reports")
+}
+
+// ─── TI Allowance ────────────────────────────────────────────────────────────
+
+model TIAllowance {
+  id                   String   @id @default(cuid())
+  leaseId              String
+  tenantId             String
+  approvedAmount       Decimal  @db.Decimal(10, 2)
+  disbursedAmount      Decimal  @db.Decimal(10, 2) @default(0)
+  disbursementSchedule Json?
+  completionDeadline   DateTime
+  lienWaiverRequired   Boolean  @default(true)
+  lienWaiverReceived   Boolean  @default(false)
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  lease  Lease  @relation(fields: [leaseId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("ti_allowances")
+}
+
+// ─── Louisiana Sales Tax ──────────────────────────────────────────────────────
+
+model SalesTaxConfig {
+  id               String   @id @default(cuid())
+  propertyId       String
+  jurisdictionCode String
+  stateRate        Decimal  @db.Decimal(6, 4) @default(0.05)
+  localRate        Decimal  @db.Decimal(6, 4)
+  effectiveDate    DateTime
+  expiryDate       DateTime?
+  notes            String?
+  createdAt        DateTime @default(now())
+
+  @@map("sales_tax_configs")
+}
+
+model TaxExemptCertificate {
+  id             String   @id @default(cuid())
+  tenantId       String
+  exemptionType  String
+  issuedBy       String
+  expirationDate DateTime
+  documentPath   String?
+  createdAt      DateTime @default(now())
+
+  @@map("tax_exempt_certificates")
+}
+
+// ─── Parking Agreements ───────────────────────────────────────────────────────
+
+model ParkingAgreement {
+  id              String           @id @default(cuid())
+  propertyId      String
+  partyName       String
+  partyType       ParkingPartyType @default(OTHER)
+  contactName     String?
+  contactEmail    String?
+  contactPhone    String?
+  monthlyAmount   Decimal          @db.Decimal(10, 2)
+  agreementStart  DateTime
+  agreementEnd    DateTime?
+  isActive        Boolean          @default(true)
+  notes           String?
+  documentPath    String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  property Property         @relation(fields: [propertyId], references: [id])
+  payments ParkingPayment[]
+
+  @@index([propertyId])
+  @@map("parking_agreements")
+}
+
+model ParkingPayment {
+  id                 String   @id @default(cuid())
+  parkingAgreementId String
+  amount             Decimal  @db.Decimal(10, 2)
+  periodMonth        Int
+  periodYear         Int
+  receivedAt         DateTime @default(now())
+  notes              String?
+  createdAt          DateTime @default(now())
+
+  agreement ParkingAgreement @relation(fields: [parkingAgreementId], references: [id])
+
+  @@map("parking_payments")
+}
+
+// ─── HVAC Maintenance Contracts ───────────────────────────────────────────────
+
+model HvacMaintenanceContract {
+  id             String   @id @default(cuid())
+  unitId         String
+  vendorId       String?
+  vendorName     String
+  contractNumber String?
+  startDate      DateTime
+  endDate        DateTime
+  monthlyAmount  Decimal? @db.Decimal(10, 2)
+  annualAmount   Decimal? @db.Decimal(10, 2)
+  coverageScope  String?
+  isActive       Boolean  @default(true)
+  documentPath   String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  unit   Unit    @relation(fields: [unitId], references: [id])
+  vendor Vendor? @relation(fields: [vendorId], references: [id])
+
+  @@index([unitId])
+  @@map("hvac_maintenance_contracts")
+}
+
+// ─── Signage Approvals ────────────────────────────────────────────────────────
+
+model SignageApproval {
+  id           String       @id @default(cuid())
+  tenantId     String
+  unitId       String?
+  status       SignageStatus @default(PENDING)
+  signageType  String       // UNDER_CANOPY | WINDOW | MONUMENT | PYLON | OTHER
+  description  String?
+  vendorName   String?
+  submittedAt  DateTime?
+  approvedAt   DateTime?
+  rejectedAt   DateTime?
+  rejectionReason String?
+  installedAt  DateTime?
+  documentPath String?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("signage_approvals")
+}
+
+// ─── ACH Forms ───────────────────────────────────────────────────────────────
+
+model AchForm {
+  id            String   @id @default(cuid())
+  tenantId      String
+  bankName      String
+  accountType   String   // CHECKING | SAVINGS
+  routingNumber String
+  accountNumber String   // store masked only: last 4
+  accountHolder String
+  isActive      Boolean  @default(true)
+  signedAt      DateTime?
+  revokedAt     DateTime?
+  documentPath  String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("ach_forms")
+}
+
+// ─── Vendor ───────────────────────────────────────────────────────────────────
+
+model Vendor {
+  id                  String                  @id @default(cuid())
+  companyName         String
+  contactName         String?
+  email               String?
+  phone               String?
+  altPhone            String?
+  address             String?
+  city                String?
+  state               String?
+  zip                 String?
+  category            String?  // HVAC | PLUMBING | ELECTRICAL | ROOFING | GENERAL | LANDSCAPING | PEST | SIGNAGE | OTHER
+  isPreferred         Boolean  @default(false)
+  isSuggested         Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  notes               String?
+
+  // W-9 / Tax info for 1099
+  taxId               String?
+  taxIdType           String?  // EIN | SSN
+  businessType        String?  // LLC | CORP | SOLE_PROP | PARTNERSHIP
+  w9OnFile            Boolean  @default(false)
+  w9ReceivedAt        DateTime?
+  w9DocumentPath      String?
+
+  // Vendor self-registration
+  registrationToken   String?  @unique
+  registrationStatus  VendorRegistrationStatus @default(INVITED)
+  registrationSubmittedAt DateTime?
+  registrationApprovedAt  DateTime?
+
+  // Insurance
+  coiOnFile           Boolean  @default(false)
+  coiExpiresAt        DateTime?
+  coiDocumentPath     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  maintenanceRequests MaintenanceRequest[]
+  hvacContracts       HvacMaintenanceContract[]
+  expenses            Expense[]
+
+  @@map("vendors")
+}
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+model DocumentReference {
+  id           String   @id @default(cuid())
+  propertyId   String?
+  unitId       String?
+  tenantId     String?
+  leaseId      String?
+  maintenanceId String?
+  title        String
+  description  String?
+  category     String?  // LEASE | NOTICE | COMPLIANCE | MAINTENANCE | FINANCIAL | SIGNAGE | OTHER
+  filePath     String
+  fileName     String
+  fileSize     Int?
+  mimeType     String?
+  isVisibleToTenant Boolean @default(false)
+  uploadedById String?
+  uploadedByTenantUserId String?
+  createdAt    DateTime @default(now())
+
+  property    Property?          @relation(fields: [propertyId], references: [id])
+  unit        Unit?              @relation(fields: [unitId], references: [id])
+  tenant      Tenant?            @relation(fields: [tenantId], references: [id])
+  lease       Lease?             @relation(fields: [leaseId], references: [id])
+  maintenance MaintenanceRequest? @relation(fields: [maintenanceId], references: [id])
+  tenantUser  TenantUser?        @relation("TenantUserUploads", fields: [uploadedByTenantUserId], references: [id])
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@map("document_references")
+}
+
+// ─── Site Plan ────────────────────────────────────────────────────────────────
+
+model SitePlanShape {
+  id          String   @id @default(cuid())
+  propertyId  String
+  unitId      String?
+  label       String?
+  shapeType   String   // rect | polygon | circle
+  svgPoints   String   // SVG path data or "x,y,w,h" for rect
+  isClickable Boolean  @default(true)
+  fillColor   String?
+  strokeColor String?
+  textColor   String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  unit     Unit?    @relation(fields: [unitId], references: [id])
+
+  @@index([propertyId])
+  @@map("site_plan_shapes")
+}
+
+model FloorPlan {
+  id         String   @id @default(cuid())
+  propertyId String
+  unitId     String?
+  title      String
+  filePath   String
+  fileType   String   // PDF | IMAGE
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id])
+  unit     Unit?    @relation(fields: [unitId], references: [id])
+
+  @@map("floor_plans")
+}
+
+// ─── Tenant Portal ────────────────────────────────────────────────────────────
+
+model TenantUser {
+  id           String   @id @default(cuid())
+  tenantId     String
+  email        String   @unique
+  passwordHash String
+  name         String
+  isActive     Boolean  @default(true)
+  isVerified   Boolean  @default(false)
+  verifyToken  String?
+  resetToken   String?
+  resetTokenExp DateTime?
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id])
+  documents DocumentReference[] @relation("TenantUserUploads")
+
+  @@index([tenantId])
+  @@map("tenant_users")
+}
+
+// ─── Workflow Engine ──────────────────────────────────────────────────────────
+
+model WorkflowDefinition {
+  id              String   @id @default(cuid())
+  propertyId      String?
+  name            String
+  description     String?
+  isActive        Boolean  @default(true)
+  isSystem        Boolean  @default(false)
+  triggerType     String   // LEASE_EXPIRY_DAYS | LEASE_START_DAYS | PAYMENT_OVERDUE_DAYS | COI_EXPIRY_DAYS | HVAC_EXPIRY_DAYS | RENT_DUE_DATE | MANUAL
+  triggerDaysOffset Int?
+  triggerTime     String?
+  conditions      Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  property Property?        @relation(fields: [propertyId], references: [id])
+  actions  WorkflowAction[]
+  runs     WorkflowRun[]
+
+  @@map("workflow_definitions")
+}
+
+model WorkflowAction {
+  id                   String @id @default(cuid())
+  workflowDefinitionId String
+  order                Int    @default(0)
+  actionType           String // SEND_EMAIL | CREATE_TASK | CREATE_REMINDER | GENERATE_INVOICE | POST_LATE_FEE
+  delayDays            Int    @default(0)
+  emailSubject         String?
+  emailTemplateId      String?
+  emailBody            String?
+  taskTitle            String?
+  taskAssigneeId       String?
+  taskDueDays          Int?
+
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+
+  @@map("workflow_actions")
+}
+
+model WorkflowRun {
+  id                   String    @id @default(cuid())
+  workflowDefinitionId String
+  triggerEntityType    String
+  triggerEntityId      String
+  status               String    @default("PENDING") // PENDING | RUNNING | COMPLETED | FAILED | SKIPPED
+  startedAt            DateTime?
+  completedAt          DateTime?
+  error                String?
+  log                  Json?
+  createdAt            DateTime  @default(now())
+
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id])
+
+  @@map("workflow_runs")
+}
+
+// ─── Email ────────────────────────────────────────────────────────────────────
+
+model EmailTemplate {
+  id         String   @id @default(cuid())
+  propertyId String?
+  name       String
+  subject    String
+  body       String
+  category   String   @default("GENERAL") // RENT_REMINDER | COI_REMINDER | LEASE_RENEWAL | NOTICE | GENERAL
+  isSystem   Boolean  @default(false)
+  variables  Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  property Property? @relation(fields: [propertyId], references: [id])
+
+  @@map("email_templates")
+}
+
+model EmailLog {
+  id                String   @id @default(cuid())
+  propertyId        String?
+  tenantId          String?
+  vendorId          String?
+  toEmail           String
+  fromEmail         String
+  subject           String
+  body              String?
+  status            String   @default("SENT") // SENT | FAILED | BOUNCED | DELIVERED | OPENED
+  sentAt            DateTime @default(now())
+  sentById          String?
+  workflowRunId     String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  errorMessage      String?
+  createdAt         DateTime @default(now())
+
+  property Property? @relation(fields: [propertyId], references: [id])
+
+  @@map("email_logs")
+}
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+
+model Task {
+  id                String    @id @default(cuid())
+  propertyId        String?
+  title             String
+  description       String?
+  status            String    @default("TODO") // TODO | IN_PROGRESS | DONE | CANCELLED
+  priority          String    @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  dueDate           DateTime?
+  completedAt       DateTime?
+  assignedToId      String?
+  createdById       String?
+  relatedEntityType String?
+  relatedEntityId   String?
+  leaseId           String?
+  tenantId          String?
+  unitId            String?
+  vendorId          String?
+  tags              String[]
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  property Property? @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("tasks")
+}
+
+// ─── eSign ────────────────────────────────────────────────────────────────────
+
+model ESignRequest {
+  id            String      @id @default(cuid())
+  propertyId    String?
+  documentId    String?
+  leaseId       String?
+  tenantId      String?
+  title         String
+  description   String?
+  signerEmail   String
+  signerName    String
+  status        ESignStatus @default(PENDING)
+  token         String      @unique
+  expiresAt     DateTime
+  sentAt        DateTime?
+  viewedAt      DateTime?
+  signedAt      DateTime?
+  declinedAt    DateTime?
+  declineReason String?
+  signedPath    String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  property Property? @relation(fields: [propertyId], references: [id])
+  lease    Lease?    @relation(fields: [leaseId], references: [id])
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id])
+
+  @@map("esign_requests")
+}
+
+// ─── Audit & Activity ─────────────────────────────────────────────────────────
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  userId        String
+  userEmail     String
+  action        String   // LOGIN | LOGOUT | CREATE | UPDATE | DELETE | EXPORT | ROLE_CHANGE | AI_ASSIST
+  entityType    String
+  entityId      String
+  previousValue Json?
+  newValue      Json?
+  ipAddress     String?
+  userAgent     String?
+  requestId     String?
+  timestamp     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  propertyId  String?
+  userId      String?
+  userEmail   String?
+  action      String
+  entityType  String
+  entityId    String
+  entityLabel String?
+  metadata    Json?
+  timestamp   DateTime @default(now())
+
+  property Property? @relation(fields: [propertyId], references: [id])
+  user     User?     @relation(fields: [userId], references: [id])
+
+  @@index([propertyId])
+  @@index([timestamp])
+  @@map("activity_logs")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  title      String
+  body       String
+  type       String   @default("INFO") // INFO | WARNING | ALERT | SUCCESS
+  isRead     Boolean  @default(false)
+  readAt     DateTime?
+  entityType String?
+  entityId   String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
