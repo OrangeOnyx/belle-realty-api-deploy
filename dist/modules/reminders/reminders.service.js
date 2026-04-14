@@ -16,20 +16,50 @@ let RemindersService = class RemindersService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Reminders service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.tenantId)
+            where.tenantId = filters.tenantId;
+        if (filters?.leaseId)
+            where.leaseId = filters.leaseId;
+        if (filters?.isDone !== undefined)
+            where.isDone = filters.isDone === 'true' || filters.isDone === true;
+        return this.prisma.reminder.findMany({
+            where,
+            include: {
+                tenant: { select: { legalName: true, tradeName: true } },
+                lease: { select: { unit: { select: { suiteNumber: true } } } },
+            },
+            orderBy: [{ isDone: 'asc' }, { dueDate: 'asc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Reminders service — implement findOne', id };
+    async findOne(id) {
+        const reminder = await this.prisma.reminder.findUnique({
+            where: { id },
+            include: {
+                tenant: { select: { legalName: true, tradeName: true } },
+                lease: { select: { unit: { select: { suiteNumber: true } } } },
+            },
+        });
+        if (!reminder)
+            throw new common_1.NotFoundException('Reminder not found');
+        return reminder;
     }
-    create(data) {
-        return { message: 'Reminders service — implement create', data };
+    async create(data) {
+        return this.prisma.reminder.create({ data });
     }
-    update(id, data) {
-        return { message: 'Reminders service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        if (data.isDone && !data.completedAt) {
+            data.completedAt = new Date();
+        }
+        return this.prisma.reminder.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Reminders service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.reminder.delete({ where: { id } });
     }
 };
 exports.RemindersService = RemindersService;

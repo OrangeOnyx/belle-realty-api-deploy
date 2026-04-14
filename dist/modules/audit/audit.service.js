@@ -16,21 +16,34 @@ let AuditService = class AuditService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Audit service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.userId)
+            where.userId = filters.userId;
+        if (filters?.entityType)
+            where.entityType = filters.entityType;
+        if (filters?.entityId)
+            where.entityId = filters.entityId;
+        if (filters?.action)
+            where.action = filters.action;
+        return this.prisma.auditLog.findMany({
+            where,
+            include: {
+                user: { select: { name: true, email: true } },
+            },
+            orderBy: { timestamp: 'desc' },
+            take: filters?.limit ? parseInt(filters.limit) : 100,
+        });
     }
-    findOne(id) {
-        return { message: 'Audit service — implement findOne', id };
+    async findOne(id) {
+        return this.prisma.auditLog.findUnique({
+            where: { id },
+            include: { user: { select: { name: true, email: true } } },
+        });
     }
-    create(data) {
-        return { message: 'Audit service — implement create', data };
-    }
-    update(id, data) {
-        return { message: 'Audit service — implement update', id, data };
-    }
-    remove(id) {
-        return { message: 'Audit service — implement remove', id };
-    }
+    create(data) { return data; }
+    update(id, data) { return { id, data }; }
+    remove(id) { return { id }; }
 };
 exports.AuditService = AuditService;
 exports.AuditService = AuditService = __decorate([

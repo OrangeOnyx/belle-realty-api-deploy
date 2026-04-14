@@ -16,20 +16,47 @@ let VendorRegistrationService = class VendorRegistrationService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'VendorRegistration service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.category)
+            where.category = filters.category;
+        if (filters?.isActive !== undefined)
+            where.isActive = filters.isActive === 'true' || filters.isActive === true;
+        if (filters?.isPreferred !== undefined)
+            where.isPreferred = filters.isPreferred === 'true' || filters.isPreferred === true;
+        if (filters?.search) {
+            where.OR = [
+                { companyName: { contains: filters.search, mode: 'insensitive' } },
+                { contactName: { contains: filters.search, mode: 'insensitive' } },
+            ];
+        }
+        return this.prisma.vendor.findMany({
+            where,
+            orderBy: [{ isPreferred: 'desc' }, { companyName: 'asc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'VendorRegistration service — implement findOne', id };
+    async findOne(id) {
+        const vendor = await this.prisma.vendor.findUnique({
+            where: { id },
+            include: {
+                maintenanceRequests: { orderBy: { createdAt: 'desc' }, take: 10 },
+                hvacContracts: { orderBy: { startDate: 'desc' }, take: 5 },
+            },
+        });
+        if (!vendor)
+            throw new common_1.NotFoundException('Vendor not found');
+        return vendor;
     }
-    create(data) {
-        return { message: 'VendorRegistration service — implement create', data };
+    async create(data) {
+        return this.prisma.vendor.create({ data });
     }
-    update(id, data) {
-        return { message: 'VendorRegistration service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        return this.prisma.vendor.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'VendorRegistration service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.vendor.update({ where: { id }, data: { isActive: false } });
     }
 };
 exports.VendorRegistrationService = VendorRegistrationService;

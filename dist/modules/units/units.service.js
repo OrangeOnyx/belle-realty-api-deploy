@@ -16,20 +16,63 @@ let UnitsService = class UnitsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Units service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.status)
+            where.status = filters.status;
+        if (filters?.isVacant !== undefined) {
+            where.isVacant = filters.isVacant === 'true' || filters.isVacant === true;
+        }
+        return this.prisma.unit.findMany({
+            where,
+            include: {
+                leases: {
+                    where: { status: { in: ['ACTIVE', 'HOLDOVER'] }, deletedAt: null },
+                    select: {
+                        id: true,
+                        status: true,
+                        leaseStart: true,
+                        leaseEnd: true,
+                        monthlyTotal: true,
+                        tenant: { select: { legalName: true, tradeName: true } },
+                    },
+                    take: 1,
+                    orderBy: { leaseStart: 'desc' },
+                },
+            },
+            orderBy: { suiteNumber: 'asc' },
+        });
     }
-    findOne(id) {
-        return { message: 'Units service — implement findOne', id };
+    async findOne(id) {
+        const unit = await this.prisma.unit.findUnique({
+            where: { id },
+            include: {
+                leases: {
+                    where: { deletedAt: null },
+                    include: {
+                        tenant: { select: { legalName: true, tradeName: true, email: true, phone: true } },
+                    },
+                    orderBy: { leaseStart: 'desc' },
+                },
+                maintenanceRequests: { orderBy: { createdAt: 'desc' }, take: 10 },
+            },
+        });
+        if (!unit)
+            throw new common_1.NotFoundException('Unit not found');
+        return unit;
     }
-    create(data) {
-        return { message: 'Units service — implement create', data };
+    async create(data) {
+        return this.prisma.unit.create({ data });
     }
-    update(id, data) {
-        return { message: 'Units service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        return this.prisma.unit.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Units service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.unit.delete({ where: { id } });
     }
 };
 exports.UnitsService = UnitsService;

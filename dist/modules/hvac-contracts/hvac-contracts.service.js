@@ -16,20 +16,45 @@ let HvacContractsService = class HvacContractsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'HvacContracts service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.unitId)
+            where.unitId = filters.unitId;
+        if (filters?.vendorId)
+            where.vendorId = filters.vendorId;
+        if (filters?.isActive !== undefined)
+            where.isActive = filters.isActive === 'true' || filters.isActive === true;
+        return this.prisma.hvacMaintenanceContract.findMany({
+            where,
+            include: {
+                unit: { select: { suiteNumber: true, propertyId: true } },
+                vendor: { select: { name: true, phone: true, email: true } },
+            },
+            orderBy: [{ endDate: 'asc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'HvacContracts service — implement findOne', id };
+    async findOne(id) {
+        const contract = await this.prisma.hvacMaintenanceContract.findUnique({
+            where: { id },
+            include: {
+                unit: { select: { suiteNumber: true, propertyId: true } },
+                vendor: true,
+            },
+        });
+        if (!contract)
+            throw new common_1.NotFoundException('HVAC contract not found');
+        return contract;
     }
-    create(data) {
-        return { message: 'HvacContracts service — implement create', data };
+    async create(data) {
+        return this.prisma.hvacMaintenanceContract.create({ data });
     }
-    update(id, data) {
-        return { message: 'HvacContracts service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        return this.prisma.hvacMaintenanceContract.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'HvacContracts service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.hvacMaintenanceContract.update({ where: { id }, data: { isActive: false } });
     }
 };
 exports.HvacContractsService = HvacContractsService;

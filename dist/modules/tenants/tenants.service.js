@@ -16,20 +16,69 @@ let TenantsService = class TenantsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Tenants service — implement findAll' };
+    async findAll(filters) {
+        const where = { deletedAt: null };
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.status)
+            where.status = filters.status;
+        if (filters?.search) {
+            where.OR = [
+                { legalName: { contains: filters.search, mode: 'insensitive' } },
+                { tradeName: { contains: filters.search, mode: 'insensitive' } },
+                { email: { contains: filters.search, mode: 'insensitive' } },
+            ];
+        }
+        return this.prisma.tenant.findMany({
+            where,
+            include: {
+                leases: {
+                    where: { status: { in: ['ACTIVE', 'HOLDOVER'] }, deletedAt: null },
+                    select: {
+                        id: true,
+                        status: true,
+                        leaseStart: true,
+                        leaseEnd: true,
+                        monthlyTotal: true,
+                        unit: { select: { suiteNumber: true, gla: true } },
+                    },
+                    take: 1,
+                    orderBy: { leaseStart: 'desc' },
+                },
+            },
+            orderBy: { legalName: 'asc' },
+        });
     }
-    findOne(id) {
-        return { message: 'Tenants service — implement findOne', id };
+    async findOne(id) {
+        const tenant = await this.prisma.tenant.findUnique({
+            where: { id },
+            include: {
+                leases: {
+                    where: { deletedAt: null },
+                    include: { unit: { select: { suiteNumber: true, gla: true } } },
+                    orderBy: { leaseStart: 'desc' },
+                },
+                maintenanceRequests: { orderBy: { createdAt: 'desc' }, take: 10 },
+                notices: { orderBy: { createdAt: 'desc' }, take: 10 },
+                invoices: { orderBy: { periodStart: 'desc' }, take: 12 },
+                payments: { orderBy: { receivedAt: 'desc' }, take: 12 },
+                complianceItems: { orderBy: { expiresAt: 'asc' } },
+            },
+        });
+        if (!tenant)
+            throw new common_1.NotFoundException('Tenant not found');
+        return tenant;
     }
-    create(data) {
-        return { message: 'Tenants service — implement create', data };
+    async create(data) {
+        return this.prisma.tenant.create({ data });
     }
-    update(id, data) {
-        return { message: 'Tenants service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        return this.prisma.tenant.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Tenants service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.tenant.update({ where: { id }, data: { deletedAt: new Date() } });
     }
 };
 exports.TenantsService = TenantsService;

@@ -16,20 +16,48 @@ let ComplianceService = class ComplianceService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Compliance service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.tenantId)
+            where.tenantId = filters.tenantId;
+        if (filters?.status)
+            where.status = filters.status;
+        return this.prisma.complianceTask.findMany({
+            where,
+            include: {
+                tenant: { select: { legalName: true, tradeName: true } },
+                actionType: { select: { name: true, category: true } },
+            },
+            orderBy: [{ dueDate: 'asc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Compliance service — implement findOne', id };
+    async findOne(id) {
+        const item = await this.prisma.complianceTask.findUnique({
+            where: { id },
+            include: {
+                tenant: { select: { legalName: true, tradeName: true, email: true } },
+                actionType: true,
+            },
+        });
+        if (!item)
+            throw new common_1.NotFoundException('Compliance item not found');
+        return item;
     }
-    create(data) {
-        return { message: 'Compliance service — implement create', data };
+    async create(data) {
+        return this.prisma.complianceTask.create({ data });
     }
-    update(id, data) {
-        return { message: 'Compliance service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        if (data.status === 'APPROVED' && !data.completedAt) {
+            data.completedAt = new Date();
+        }
+        return this.prisma.complianceTask.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Compliance service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.complianceTask.delete({ where: { id } });
     }
 };
 exports.ComplianceService = ComplianceService;

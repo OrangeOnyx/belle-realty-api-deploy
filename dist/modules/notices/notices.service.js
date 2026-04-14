@@ -16,20 +16,49 @@ let NoticesService = class NoticesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Notices service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.tenantId)
+            where.tenantId = filters.tenantId;
+        if (filters?.leaseId)
+            where.leaseId = filters.leaseId;
+        if (filters?.status)
+            where.status = filters.status;
+        if (filters?.type)
+            where.type = filters.type;
+        return this.prisma.notice.findMany({
+            where,
+            include: {
+                tenant: { select: { legalName: true, tradeName: true } },
+                lease: { select: { unit: { select: { suiteNumber: true } } } },
+            },
+            orderBy: [{ createdAt: 'desc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Notices service — implement findOne', id };
+    async findOne(id) {
+        const notice = await this.prisma.notice.findUnique({
+            where: { id },
+            include: {
+                tenant: { select: { legalName: true, tradeName: true, email: true, phone: true } },
+                lease: { include: { unit: { select: { suiteNumber: true, gla: true } } } },
+            },
+        });
+        if (!notice)
+            throw new common_1.NotFoundException('Notice not found');
+        return notice;
     }
-    create(data) {
-        return { message: 'Notices service — implement create', data };
+    async create(data) {
+        return this.prisma.notice.create({ data });
     }
-    update(id, data) {
-        return { message: 'Notices service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        return this.prisma.notice.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Notices service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.notice.delete({ where: { id } });
     }
 };
 exports.NoticesService = NoticesService;

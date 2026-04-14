@@ -16,20 +16,39 @@ let EmailService = class EmailService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Email service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.tenantId)
+            where.tenantId = filters.tenantId;
+        if (filters?.status)
+            where.status = filters.status;
+        return this.prisma.emailLog.findMany({
+            where,
+            orderBy: { sentAt: 'desc' },
+            take: filters?.limit ? parseInt(filters.limit) : 50,
+        });
     }
-    findOne(id) {
-        return { message: 'Email service — implement findOne', id };
+    async findOne(id) {
+        return this.prisma.emailLog.findUnique({ where: { id } });
     }
-    create(data) {
-        return { message: 'Email service — implement create', data };
+    async create(data) {
+        return this.prisma.emailLog.create({ data });
     }
-    update(id, data) {
-        return { message: 'Email service — implement update', id, data };
+    async update(id, data) {
+        return this.prisma.emailLog.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Email service — implement remove', id };
+    async remove(id) {
+        return this.prisma.emailLog.delete({ where: { id } });
+    }
+    async getTemplates(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.category)
+            where.category = filters.category;
+        return this.prisma.emailTemplate.findMany({ where, orderBy: { name: 'asc' } });
     }
 };
 exports.EmailService = EmailService;

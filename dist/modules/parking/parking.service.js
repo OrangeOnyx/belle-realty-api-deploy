@@ -16,20 +16,41 @@ let ParkingService = class ParkingService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Parking service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.isActive !== undefined)
+            where.isActive = filters.isActive === 'true' || filters.isActive === true;
+        return this.prisma.parkingAgreement.findMany({
+            where,
+            include: {
+                payments: { orderBy: { createdAt: 'desc' }, take: 5 },
+            },
+            orderBy: [{ partyName: 'asc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Parking service — implement findOne', id };
+    async findOne(id) {
+        const agreement = await this.prisma.parkingAgreement.findUnique({
+            where: { id },
+            include: {
+                payments: { orderBy: { createdAt: 'desc' } },
+            },
+        });
+        if (!agreement)
+            throw new common_1.NotFoundException('Parking agreement not found');
+        return agreement;
     }
-    create(data) {
-        return { message: 'Parking service — implement create', data };
+    async create(data) {
+        return this.prisma.parkingAgreement.create({ data });
     }
-    update(id, data) {
-        return { message: 'Parking service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        return this.prisma.parkingAgreement.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Parking service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.parkingAgreement.update({ where: { id }, data: { isActive: false } });
     }
 };
 exports.ParkingService = ParkingService;

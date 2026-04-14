@@ -16,20 +16,48 @@ let SitePlanService = class SitePlanService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'SitePlan service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        return this.prisma.sitePlanShape.findMany({
+            where,
+            include: {
+                unit: {
+                    select: {
+                        suiteNumber: true,
+                        gla: true,
+                        isVacant: true,
+                        leases: {
+                            where: { status: { in: ['ACTIVE', 'HOLDOVER'] }, deletedAt: null },
+                            select: { tenant: { select: { legalName: true, tradeName: true } } },
+                            take: 1,
+                        },
+                    },
+                },
+            },
+            orderBy: [{ order: 'asc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'SitePlan service — implement findOne', id };
+    async findOne(id) {
+        const shape = await this.prisma.sitePlanShape.findUnique({
+            where: { id },
+            include: { unit: true },
+        });
+        if (!shape)
+            throw new common_1.NotFoundException('Site plan shape not found');
+        return shape;
     }
-    create(data) {
-        return { message: 'SitePlan service — implement create', data };
+    async create(data) {
+        return this.prisma.sitePlanShape.create({ data });
     }
-    update(id, data) {
-        return { message: 'SitePlan service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        return this.prisma.sitePlanShape.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'SitePlan service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.sitePlanShape.delete({ where: { id } });
     }
 };
 exports.SitePlanService = SitePlanService;

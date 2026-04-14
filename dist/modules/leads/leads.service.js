@@ -16,20 +16,46 @@ let LeadsService = class LeadsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Leads service — implement findAll' };
+    async findAll(filters) {
+        const where = { deletedAt: null };
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.status)
+            where.status = filters.status;
+        if (filters?.unitId)
+            where.unitId = filters.unitId;
+        return this.prisma.lead.findMany({
+            where,
+            include: {
+                unit: { select: { suiteNumber: true, gla: true } },
+            },
+            orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Leads service — implement findOne', id };
+    async findOne(id) {
+        const lead = await this.prisma.lead.findUnique({
+            where: { id },
+            include: {
+                unit: { select: { suiteNumber: true, gla: true } },
+                property: { select: { name: true, address: true } },
+            },
+        });
+        if (!lead)
+            throw new common_1.NotFoundException('Lead not found');
+        return lead;
     }
-    create(data) {
-        return { message: 'Leads service — implement create', data };
+    async create(data) {
+        return this.prisma.lead.create({ data });
     }
-    update(id, data) {
-        return { message: 'Leads service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        if (data.status === 'LOST' && !data.lostAt)
+            data.lostAt = new Date();
+        return this.prisma.lead.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Leads service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.lead.update({ where: { id }, data: { deletedAt: new Date() } });
     }
 };
 exports.LeadsService = LeadsService;

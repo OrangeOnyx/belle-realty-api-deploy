@@ -26,6 +26,12 @@ let FinancialsController = class FinancialsController {
     create(body) { return this.financialsService.create(body); }
     update(id, body) { return this.financialsService.update(id, body); }
     remove(id) { return this.financialsService.remove(id); }
+    recordPayment(id, body) {
+        return this.financialsService.recordPayment(id, body);
+    }
+    generateMonthly(body) {
+        return this.financialsService.generateMonthlyInvoices(body.propertyId, body.month, body.year);
+    }
 };
 exports.FinancialsController = FinancialsController;
 __decorate([
@@ -63,12 +69,29 @@ __decorate([
 ], FinancialsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete financials' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Void invoice' }),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], FinancialsController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)(':id/payments'),
+    (0, swagger_1.ApiOperation)({ summary: 'Record a payment against an invoice' }),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], FinancialsController.prototype, "recordPayment", null);
+__decorate([
+    (0, common_1.Post)('generate-monthly'),
+    (0, swagger_1.ApiOperation)({ summary: 'Generate monthly rent invoices for all active leases' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], FinancialsController.prototype, "generateMonthly", null);
 exports.FinancialsController = FinancialsController = __decorate([
     (0, swagger_1.ApiTags)('financials'),
     (0, swagger_1.ApiBearerAuth)(),

@@ -14,66 +14,94 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TenantPortalController = void 0;
 const common_1 = require("@nestjs/common");
-const swagger_1 = require("@nestjs/swagger");
 const jwt_auth_guard_1 = require("../../common/guards/jwt-auth.guard");
 const tenant_portal_service_1 = require("./tenant-portal.service");
 let TenantPortalController = class TenantPortalController {
     constructor(tenantPortalService) {
         this.tenantPortalService = tenantPortalService;
     }
-    findAll(query) { return this.tenantPortalService.findAll(query); }
-    findOne(id) { return this.tenantPortalService.findOne(id); }
-    create(body) { return this.tenantPortalService.create(body); }
-    update(id, body) { return this.tenantPortalService.update(id, body); }
-    remove(id) { return this.tenantPortalService.remove(id); }
+    login(body) {
+        return this.tenantPortalService.login(body.email, body.password);
+    }
+    createTenantUser(body) {
+        return this.tenantPortalService.createTenantUser(body);
+    }
+    findAll(query) {
+        return this.tenantPortalService.findAll(query);
+    }
+    getDashboard(tenantUserId) {
+        return this.tenantPortalService.getTenantDashboard(tenantUserId);
+    }
+    getInvoices(tenantUserId, query) {
+        return this.tenantPortalService.getTenantInvoices(tenantUserId, query);
+    }
+    submitMaintenance(tenantUserId, body) {
+        return this.tenantPortalService.submitMaintenanceRequest(tenantUserId, body);
+    }
+    getMaintenanceRequests(tenantUserId) {
+        return this.tenantPortalService.getTenantMaintenanceRequests(tenantUserId);
+    }
 };
 exports.TenantPortalController = TenantPortalController;
 __decorate([
-    (0, common_1.Get)(),
-    (0, swagger_1.ApiOperation)({ summary: 'List tenant-portal' }),
+    (0, common_1.Post)('login'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], TenantPortalController.prototype, "login", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('users'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], TenantPortalController.prototype, "createTenantUser", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('users'),
     __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], TenantPortalController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Get)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get tenant-portal by id' }),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('dashboard/:tenantUserId'),
+    __param(0, (0, common_1.Param)('tenantUserId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
-], TenantPortalController.prototype, "findOne", null);
+], TenantPortalController.prototype, "getDashboard", null);
 __decorate([
-    (0, common_1.Post)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Create tenant-portal' }),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('invoices/:tenantUserId'),
+    __param(0, (0, common_1.Param)('tenantUserId')),
+    __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
-], TenantPortalController.prototype, "create", null);
+], TenantPortalController.prototype, "getInvoices", null);
 __decorate([
-    (0, common_1.Patch)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Update tenant-portal' }),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('maintenance/:tenantUserId'),
+    __param(0, (0, common_1.Param)('tenantUserId')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
-], TenantPortalController.prototype, "update", null);
+], TenantPortalController.prototype, "submitMaintenance", null);
 __decorate([
-    (0, common_1.Delete)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete tenant-portal' }),
-    __param(0, (0, common_1.Param)('id')),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('maintenance/:tenantUserId'),
+    __param(0, (0, common_1.Param)('tenantUserId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
-], TenantPortalController.prototype, "remove", null);
+], TenantPortalController.prototype, "getMaintenanceRequests", null);
 exports.TenantPortalController = TenantPortalController = __decorate([
-    (0, swagger_1.ApiTags)('tenant-portal'),
-    (0, swagger_1.ApiBearerAuth)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    (0, common_1.Controller)('tenantPortal'),
+    (0, common_1.Controller)('tenant-portal'),
     __metadata("design:paramtypes", [tenant_portal_service_1.TenantPortalService])
 ], TenantPortalController);
 //# sourceMappingURL=tenant-portal.controller.js.map

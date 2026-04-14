@@ -16,20 +16,41 @@ let TasksService = class TasksService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Tasks service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.status)
+            where.status = filters.status;
+        if (filters?.priority)
+            where.priority = filters.priority;
+        if (filters?.assignedToId)
+            where.assignedToId = filters.assignedToId;
+        if (filters?.tenantId)
+            where.tenantId = filters.tenantId;
+        return this.prisma.task.findMany({
+            where,
+            orderBy: [{ priority: 'asc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Tasks service — implement findOne', id };
+    async findOne(id) {
+        const task = await this.prisma.task.findUnique({ where: { id } });
+        if (!task)
+            throw new common_1.NotFoundException('Task not found');
+        return task;
     }
-    create(data) {
-        return { message: 'Tasks service — implement create', data };
+    async create(data) {
+        return this.prisma.task.create({ data });
     }
-    update(id, data) {
-        return { message: 'Tasks service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        if (data.status === 'DONE' && !data.completedAt)
+            data.completedAt = new Date();
+        return this.prisma.task.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Tasks service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.task.update({ where: { id }, data: { status: 'CANCELLED' } });
     }
 };
 exports.TasksService = TasksService;

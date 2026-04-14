@@ -16,20 +16,28 @@ let SettingsService = class SettingsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Settings service — implement findAll' };
+    async findAll(filters) {
+        const propertyId = filters?.propertyId;
+        const [taxConfigs, chartOfAccounts] = await Promise.all([
+            this.prisma.salesTaxConfig.findMany({ where: propertyId ? { propertyId } : {} }),
+            this.prisma.chartOfAccount.findMany({ where: propertyId ? { propertyId } : {}, orderBy: { accountCode: 'asc' } }),
+        ]);
+        return { taxConfigs, chartOfAccounts };
     }
-    findOne(id) {
-        return { message: 'Settings service — implement findOne', id };
+    async findOne(id) {
+        return this.prisma.chartOfAccount.findUnique({ where: { id } });
     }
-    create(data) {
-        return { message: 'Settings service — implement create', data };
+    async create(data) {
+        if (data.type === 'TAX_CONFIG') {
+            return this.prisma.salesTaxConfig.create({ data: data.payload });
+        }
+        return this.prisma.chartOfAccount.create({ data });
     }
-    update(id, data) {
-        return { message: 'Settings service — implement update', id, data };
+    async update(id, data) {
+        return this.prisma.chartOfAccount.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Settings service — implement remove', id };
+    async remove(id) {
+        return this.prisma.chartOfAccount.delete({ where: { id } });
     }
 };
 exports.SettingsService = SettingsService;

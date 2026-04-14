@@ -39,6 +39,10 @@ const tasks_module_1 = require("./modules/tasks/tasks.module");
 const workflows_module_1 = require("./modules/workflows/workflows.module");
 const email_module_1 = require("./modules/email/email.module");
 const esign_module_1 = require("./modules/esign/esign.module");
+const cam_module_1 = require("./modules/cam/cam.module");
+const percentage_rent_module_1 = require("./modules/percentage-rent/percentage-rent.module");
+const critical_dates_module_1 = require("./modules/critical-dates/critical-dates.module");
+const automated_accounting_module_1 = require("./modules/automated-accounting/automated-accounting.module");
 const health_controller_1 = require("./common/health/health.controller");
 let AppModule = class AppModule {
 };
@@ -77,6 +81,10 @@ exports.AppModule = AppModule = __decorate([
             workflows_module_1.WorkflowsModule,
             email_module_1.EmailModule,
             esign_module_1.ESignModule,
+            cam_module_1.CamModule,
+            percentage_rent_module_1.PercentageRentModule,
+            critical_dates_module_1.CriticalDatesModule,
+            automated_accounting_module_1.AutomatedAccountingModule,
         ],
         controllers: [health_controller_1.HealthController],
     })

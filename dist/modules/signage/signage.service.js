@@ -16,20 +16,47 @@ let SignageService = class SignageService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Signage service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.tenantId)
+            where.tenantId = filters.tenantId;
+        if (filters?.status)
+            where.status = filters.status;
+        return this.prisma.signageApproval.findMany({
+            where,
+            include: {
+                tenant: { select: { legalName: true, tradeName: true } },
+            },
+            orderBy: [{ createdAt: 'desc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Signage service — implement findOne', id };
+    async findOne(id) {
+        const item = await this.prisma.signageApproval.findUnique({
+            where: { id },
+            include: {
+                tenant: { select: { legalName: true, tradeName: true, email: true } },
+            },
+        });
+        if (!item)
+            throw new common_1.NotFoundException('Signage request not found');
+        return item;
     }
-    create(data) {
-        return { message: 'Signage service — implement create', data };
+    async create(data) {
+        return this.prisma.signageApproval.create({ data });
     }
-    update(id, data) {
-        return { message: 'Signage service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        if (data.status === 'APPROVED' && !data.approvedAt)
+            data.approvedAt = new Date();
+        if (data.status === 'REJECTED' && !data.rejectedAt)
+            data.rejectedAt = new Date();
+        if (data.status === 'INSTALLED' && !data.installedAt)
+            data.installedAt = new Date();
+        return this.prisma.signageApproval.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Signage service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.signageApproval.delete({ where: { id } });
     }
 };
 exports.SignageService = SignageService;

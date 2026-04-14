@@ -16,20 +16,55 @@ let MaintenanceService = class MaintenanceService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Maintenance service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.status)
+            where.status = filters.status;
+        if (filters?.category)
+            where.category = filters.category;
+        if (filters?.priority)
+            where.priority = filters.priority;
+        if (filters?.tenantId)
+            where.tenantId = filters.tenantId;
+        if (filters?.unitId)
+            where.unitId = filters.unitId;
+        return this.prisma.maintenanceRequest.findMany({
+            where,
+            include: {
+                unit: { select: { suiteNumber: true } },
+                tenant: { select: { legalName: true, tradeName: true } },
+            },
+            orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Maintenance service — implement findOne', id };
+    async findOne(id) {
+        const req = await this.prisma.maintenanceRequest.findUnique({
+            where: { id },
+            include: {
+                unit: true,
+                tenant: { select: { legalName: true, tradeName: true, email: true, phone: true } },
+                lease: { select: { id: true, status: true } },
+            },
+        });
+        if (!req)
+            throw new common_1.NotFoundException('Maintenance request not found');
+        return req;
     }
-    create(data) {
-        return { message: 'Maintenance service — implement create', data };
+    async create(data) {
+        return this.prisma.maintenanceRequest.create({ data });
     }
-    update(id, data) {
-        return { message: 'Maintenance service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        if (data.status === 'COMPLETED' && !data.completedAt) {
+            data.completedAt = new Date();
+        }
+        return this.prisma.maintenanceRequest.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Maintenance service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.maintenanceRequest.update({ where: { id }, data: { status: 'CANCELLED' } });
     }
 };
 exports.MaintenanceService = MaintenanceService;
