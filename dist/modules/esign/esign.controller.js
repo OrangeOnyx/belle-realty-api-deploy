@@ -29,11 +29,8 @@ let EsignController = class EsignController {
     update(id, body) { return this.esignService.update(id, body); }
     remove(id) { return this.esignService.remove(id); }
     getByToken(token) { return this.esignService.findByToken(token); }
-    sign(token, req) {
-        return this.esignService.sign(token, {
-            ipAddress: req.ip,
-            userAgent: req.headers['user-agent'],
-        });
+    sign(token, ip, userAgent) {
+        return this.esignService.sign(token, { ipAddress: ip || '', userAgent: userAgent || '' });
     }
     decline(token, body) {
         return this.esignService.decline(token, body.reason || 'Declined by signer');
@@ -123,9 +120,10 @@ __decorate([
     (0, common_1.Post)('sign/:token'),
     (0, swagger_1.ApiOperation)({ summary: 'Sign document (public)' }),
     __param(0, (0, common_1.Param)('token')),
-    __param(1, (0, common_1.Req)()),
+    __param(1, (0, common_1.Ip)()),
+    __param(2, (0, common_1.Headers)('user-agent')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", void 0)
 ], EsignController.prototype, "sign", null);
 __decorate([

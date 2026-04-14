@@ -16,7 +16,7 @@ export declare class EsignController {
     update(id: string, body: any): Promise<any>;
     remove(id: string): Promise<any>;
     getByToken(token: string): Promise<any>;
-    sign(token: string, req: any): Promise<any>;
+    sign(token: string, ip: string, userAgent: string): Promise<any>;
     decline(token: string, body: {
         reason: string;
     }): Promise<any>;
