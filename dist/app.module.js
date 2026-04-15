@@ -43,6 +43,7 @@ const cam_module_1 = require("./modules/cam/cam.module");
 const percentage_rent_module_1 = require("./modules/percentage-rent/percentage-rent.module");
 const critical_dates_module_1 = require("./modules/critical-dates/critical-dates.module");
 const automated_accounting_module_1 = require("./modules/automated-accounting/automated-accounting.module");
+const rent_roll_import_module_1 = require("./modules/rent-roll-import/rent-roll-import.module");
 const health_controller_1 = require("./common/health/health.controller");
 let AppModule = class AppModule {
 };
@@ -85,6 +86,7 @@ exports.AppModule = AppModule = __decorate([
             percentage_rent_module_1.PercentageRentModule,
             critical_dates_module_1.CriticalDatesModule,
             automated_accounting_module_1.AutomatedAccountingModule,
+            rent_roll_import_module_1.RentRollImportModule,
         ],
         controllers: [health_controller_1.HealthController],
     })
