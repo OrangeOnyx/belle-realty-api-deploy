@@ -17,19 +17,53 @@ let AchService = class AchService {
         this.prisma = prisma;
     }
     findAll(filters) {
-        return { message: 'Ach service — implement findAll' };
+        const where = {};
+        if (filters?.tenantId)
+            where.tenantId = filters.tenantId;
+        if (filters?.isActive !== undefined)
+            where.isActive = filters.isActive === 'true' || filters.isActive === true;
+        return this.prisma.achForm.findMany({
+            where,
+            include: {
+                tenant: { select: { id: true, firstName: true, lastName: true, companyName: true } },
+            },
+            orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Ach service — implement findOne', id };
+    async findOne(id) {
+        const form = await this.prisma.achForm.findUnique({
+            where: { id },
+            include: {
+                tenant: { select: { id: true, firstName: true, lastName: true, companyName: true } },
+            },
+        });
+        if (!form)
+            throw new common_1.NotFoundException('ACH form not found');
+        return form;
     }
     create(data) {
-        return { message: 'Ach service — implement create', data };
+        if (data.accountNumber && data.accountNumber.length > 4) {
+            data.accountNumber = data.accountNumber.slice(-4);
+        }
+        return this.prisma.achForm.create({ data });
     }
-    update(id, data) {
-        return { message: 'Ach service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        if (data.accountNumber && data.accountNumber.length > 4) {
+            data.accountNumber = data.accountNumber.slice(-4);
+        }
+        return this.prisma.achForm.update({ where: { id }, data });
     }
-    remove(id) {
-        return { message: 'Ach service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.achForm.delete({ where: { id } });
+    }
+    async revoke(id) {
+        await this.findOne(id);
+        return this.prisma.achForm.update({
+            where: { id },
+            data: { isActive: false, revokedAt: new Date() },
+        });
     }
 };
 exports.AchService = AchService;

@@ -25,6 +25,7 @@ let AchController = class AchController {
     findOne(id) { return this.achService.findOne(id); }
     create(body) { return this.achService.create(body); }
     update(id, body) { return this.achService.update(id, body); }
+    revoke(id) { return this.achService.revoke(id); }
     remove(id) { return this.achService.remove(id); }
 };
 exports.AchController = AchController;
@@ -62,8 +63,16 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AchController.prototype, "update", null);
 __decorate([
+    (0, common_1.Post)(':id/revoke'),
+    (0, swagger_1.ApiOperation)({ summary: 'Revoke ACH authorization' }),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AchController.prototype, "revoke", null);
+__decorate([
     (0, common_1.Delete)(':id'),
-    (0, swagger_1.ApiOperation)({ summary: 'Delete ach' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Delete ACH form' }),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

@@ -2,24 +2,10 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 export declare class AchService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    findAll(filters?: any): {
-        message: string;
-    };
-    findOne(id: string): {
-        message: string;
-        id: string;
-    };
-    create(data: any): {
-        message: string;
-        data: any;
-    };
-    update(id: string, data: any): {
-        message: string;
-        id: string;
-        data: any;
-    };
-    remove(id: string): {
-        message: string;
-        id: string;
-    };
+    findAll(filters?: any): any;
+    findOne(id: string): Promise<any>;
+    create(data: any): any;
+    update(id: string, data: any): Promise<any>;
+    remove(id: string): Promise<any>;
+    revoke(id: string): Promise<any>;
 }
