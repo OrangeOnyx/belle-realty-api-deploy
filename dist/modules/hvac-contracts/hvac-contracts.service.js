@@ -28,7 +28,7 @@ let HvacContractsService = class HvacContractsService {
             where,
             include: {
                 unit: { select: { suiteNumber: true, propertyId: true } },
-                vendor: { select: { name: true, phone: true, email: true } },
+                vendor: { select: { companyName: true, phone: true, email: true } },
             },
             orderBy: [{ endDate: 'asc' }],
         });

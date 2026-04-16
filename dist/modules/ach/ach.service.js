@@ -25,7 +25,7 @@ let AchService = class AchService {
         return this.prisma.achForm.findMany({
             where,
             include: {
-                tenant: { select: { id: true, firstName: true, lastName: true, companyName: true } },
+                tenant: { select: { id: true, legalName: true, contactName: true, email: true } },
             },
             orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
         });
@@ -34,7 +34,7 @@ let AchService = class AchService {
         const form = await this.prisma.achForm.findUnique({
             where: { id },
             include: {
-                tenant: { select: { id: true, firstName: true, lastName: true, companyName: true } },
+                tenant: { select: { id: true, legalName: true, contactName: true, email: true } },
             },
         });
         if (!form)
