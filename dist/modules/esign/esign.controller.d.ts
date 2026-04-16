@@ -10,14 +10,14 @@ export declare class EsignController {
         signed: any;
         declined: any;
     }>;
-    findOne(id: string): Promise<any>;
-    create(body: any): Promise<any>;
-    send(id: string): Promise<any>;
-    update(id: string, body: any): Promise<any>;
-    remove(id: string): Promise<any>;
     getByToken(token: string): Promise<any>;
     sign(token: string, ip: string, userAgent: string): Promise<any>;
     decline(token: string, body: {
         reason: string;
     }): Promise<any>;
+    findOne(id: string): Promise<any>;
+    create(body: any): Promise<any>;
+    send(id: string): Promise<any>;
+    update(id: string, body: any): Promise<any>;
+    remove(id: string): Promise<any>;
 }

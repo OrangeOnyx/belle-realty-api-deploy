@@ -73,7 +73,7 @@ exports.HvacContractsController = HvacContractsController = __decorate([
     (0, swagger_1.ApiTags)('hvac-contracts'),
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    (0, common_1.Controller)('hvacContracts'),
+    (0, common_1.Controller)('hvac'),
     __metadata("design:paramtypes", [hvac_contracts_service_1.HvacContractsService])
 ], HvacContractsController);
 //# sourceMappingURL=hvac-contracts.controller.js.map

@@ -16,20 +16,77 @@ let WorkflowsService = class WorkflowsService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    findAll(filters) {
-        return { message: 'Workflows service — implement findAll' };
+    async findAll(filters) {
+        const where = {};
+        if (filters?.propertyId)
+            where.propertyId = filters.propertyId;
+        if (filters?.isActive !== undefined)
+            where.isActive = filters.isActive === 'true' || filters.isActive === true;
+        if (filters?.triggerType)
+            where.triggerType = filters.triggerType;
+        return this.prisma.workflowDefinition.findMany({
+            where,
+            include: {
+                actions: { orderBy: { order: 'asc' } },
+                property: { select: { id: true, name: true } },
+                runs: {
+                    orderBy: { startedAt: 'desc' },
+                    take: 5,
+                    select: { id: true, status: true, startedAt: true, completedAt: true, error: true },
+                },
+            },
+            orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
+        });
     }
-    findOne(id) {
-        return { message: 'Workflows service — implement findOne', id };
+    async findOne(id) {
+        const wf = await this.prisma.workflowDefinition.findUnique({
+            where: { id },
+            include: {
+                actions: { orderBy: { order: 'asc' } },
+                property: { select: { id: true, name: true } },
+                runs: {
+                    orderBy: { startedAt: 'desc' },
+                    take: 10,
+                    select: { id: true, status: true, startedAt: true, completedAt: true, error: true },
+                },
+            },
+        });
+        if (!wf)
+            throw new common_1.NotFoundException('Workflow not found');
+        return wf;
     }
-    create(data) {
-        return { message: 'Workflows service — implement create', data };
+    async create(data) {
+        const { actions, ...wfData } = data;
+        return this.prisma.workflowDefinition.create({
+            data: {
+                ...wfData,
+                actions: actions?.length ? {
+                    create: actions.map((a, i) => ({ ...a, order: i })),
+                } : undefined,
+            },
+            include: { actions: { orderBy: { order: 'asc' } } },
+        });
     }
-    update(id, data) {
-        return { message: 'Workflows service — implement update', id, data };
+    async update(id, data) {
+        await this.findOne(id);
+        const { actions, ...wfData } = data;
+        if (actions !== undefined) {
+            await this.prisma.workflowAction.deleteMany({ where: { workflowDefinitionId: id } });
+            if (actions.length > 0) {
+                await this.prisma.workflowAction.createMany({
+                    data: actions.map((a, i) => ({ ...a, workflowDefinitionId: id, order: i })),
+                });
+            }
+        }
+        return this.prisma.workflowDefinition.update({
+            where: { id },
+            data: wfData,
+            include: { actions: { orderBy: { order: 'asc' } } },
+        });
     }
-    remove(id) {
-        return { message: 'Workflows service — implement remove', id };
+    async remove(id) {
+        await this.findOne(id);
+        return this.prisma.workflowDefinition.delete({ where: { id } });
     }
 };
 exports.WorkflowsService = WorkflowsService;

@@ -23,11 +23,6 @@ let EsignController = class EsignController {
     }
     findAll(query) { return this.esignService.findAll(query); }
     getStats(propertyId) { return this.esignService.getStats(propertyId); }
-    findOne(id) { return this.esignService.findOne(id); }
-    create(body) { return this.esignService.create(body); }
-    send(id) { return this.esignService.send(id); }
-    update(id, body) { return this.esignService.update(id, body); }
-    remove(id) { return this.esignService.remove(id); }
     getByToken(token) { return this.esignService.findByToken(token); }
     sign(token, ip, userAgent) {
         return this.esignService.sign(token, { ipAddress: ip || '', userAgent: userAgent || '' });
@@ -35,6 +30,11 @@ let EsignController = class EsignController {
     decline(token, body) {
         return this.esignService.decline(token, body.reason || 'Declined by signer');
     }
+    findOne(id) { return this.esignService.findOne(id); }
+    create(body) { return this.esignService.create(body); }
+    send(id) { return this.esignService.send(id); }
+    update(id, body) { return this.esignService.update(id, body); }
+    remove(id) { return this.esignService.remove(id); }
 };
 exports.EsignController = EsignController;
 __decorate([
@@ -57,6 +57,33 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], EsignController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Get)('sign/:token'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get signing request by token (public)' }),
+    __param(0, (0, common_1.Param)('token')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], EsignController.prototype, "getByToken", null);
+__decorate([
+    (0, common_1.Post)('sign/:token'),
+    (0, swagger_1.ApiOperation)({ summary: 'Sign document (public)' }),
+    __param(0, (0, common_1.Param)('token')),
+    __param(1, (0, common_1.Ip)()),
+    __param(2, (0, common_1.Headers)('user-agent')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], EsignController.prototype, "sign", null);
+__decorate([
+    (0, common_1.Post)('decline/:token'),
+    (0, swagger_1.ApiOperation)({ summary: 'Decline document (public)' }),
+    __param(0, (0, common_1.Param)('token')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], EsignController.prototype, "decline", null);
 __decorate([
     (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
@@ -108,33 +135,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], EsignController.prototype, "remove", null);
-__decorate([
-    (0, common_1.Get)('sign/:token'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get signing request by token (public)' }),
-    __param(0, (0, common_1.Param)('token')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
-], EsignController.prototype, "getByToken", null);
-__decorate([
-    (0, common_1.Post)('sign/:token'),
-    (0, swagger_1.ApiOperation)({ summary: 'Sign document (public)' }),
-    __param(0, (0, common_1.Param)('token')),
-    __param(1, (0, common_1.Ip)()),
-    __param(2, (0, common_1.Headers)('user-agent')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
-    __metadata("design:returntype", void 0)
-], EsignController.prototype, "sign", null);
-__decorate([
-    (0, common_1.Post)('decline/:token'),
-    (0, swagger_1.ApiOperation)({ summary: 'Decline document (public)' }),
-    __param(0, (0, common_1.Param)('token')),
-    __param(1, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
-    __metadata("design:returntype", void 0)
-], EsignController.prototype, "decline", null);
 exports.EsignController = EsignController = __decorate([
     (0, swagger_1.ApiTags)('esign'),
     (0, common_1.Controller)('esign'),
