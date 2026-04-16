@@ -151,34 +151,40 @@ let CriticalDatesService = CriticalDatesService_1 = class CriticalDatesService {
     async scanCoiExpirations() {
         const thresholds = [60, 30];
         const now = new Date();
+        const future = new Date();
+        future.setDate(future.getDate() + 90);
         const created = [];
-        const activeLeases = await this.prisma.lease.findMany({
-            where: { status: 'ACTIVE', deletedAt: null },
+        const coiTasks = await this.prisma.complianceTask.findMany({
+            where: {
+                status: { not: 'COMPLETED' },
+                dueDate: { gte: now, lte: future },
+                OR: [
+                    { title: { contains: 'COI', mode: 'insensitive' } },
+                    { title: { contains: 'Insurance', mode: 'insensitive' } },
+                    { title: { contains: 'Certificate of', mode: 'insensitive' } },
+                ],
+            },
             include: {
-                tenant: { select: { legalName: true, tradeName: true, coiExpiry: true } },
-                unit: { select: { suiteNumber: true } },
+                tenant: { select: { id: true, legalName: true, tradeName: true } },
             },
         });
-        for (const lease of activeLeases) {
-            if (!lease.tenant.coiExpiry)
-                continue;
-            const daysUntilExpiry = Math.ceil((new Date(lease.tenant.coiExpiry).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        for (const task of coiTasks) {
+            const daysUntilExpiry = Math.ceil((new Date(task.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             for (const threshold of thresholds) {
                 if (daysUntilExpiry <= threshold && daysUntilExpiry > threshold - 5) {
-                    const tenantName = lease.tenant.tradeName || lease.tenant.legalName;
+                    const tenantName = task.tenant?.tradeName || task.tenant?.legalName || 'Unknown Tenant';
                     const existing = await this.prisma.reminder.findFirst({
-                        where: { tenantId: lease.tenantId, title: { contains: '[COI Expiring]' } },
+                        where: { tenantId: task.tenantId, title: { contains: '[COI Expiring]' } },
                     });
                     if (existing)
                         continue;
                     const reminder = await this.prisma.reminder.create({
                         data: {
-                            propertyId: lease.propertyId,
-                            leaseId: lease.id,
-                            tenantId: lease.tenantId,
-                            title: `[COI Expiring] ${tenantName} — Suite ${lease.unit.suiteNumber}`,
-                            description: `${threshold}-day alert: Certificate of Insurance expires ${new Date(lease.tenant.coiExpiry).toLocaleDateString()}.`,
-                            dueDate: lease.tenant.coiExpiry,
+                            propertyId: task.propertyId,
+                            tenantId: task.tenantId,
+                            title: `[COI Expiring] ${tenantName}`,
+                            description: `${threshold}-day alert: ${task.title} due ${new Date(task.dueDate).toLocaleDateString()}.`,
+                            dueDate: task.dueDate,
                         },
                     });
                     created.push(reminder);
